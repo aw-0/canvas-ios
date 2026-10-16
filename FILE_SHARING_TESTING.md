@@ -66,6 +66,36 @@ The tests cover readable names, literal percent escapes, missing names and
 extensions, Unicode byte limits, unsafe path characters, independent repeated
 exports, copy failures, cleanup, and preserving the original file's bytes.
 
+### Run the filename tests without the iOS app
+
+With a Swift toolchain installed on Linux or macOS, run the following from the
+repository root. It creates a temporary Swift package containing the unchanged
+production helper and its XCTest file. This verifies file creation and naming;
+it does not build the iOS controller or test another app's share extension.
+
+```sh
+(
+  set -eu
+  verification_dir="$(mktemp -d)"
+  trap 'rm -rf "$verification_dir"' EXIT
+  mkdir -p "$verification_dir/Sources/Core" "$verification_dir/Tests/CoreTests"
+  cp Core/Core/Features/Files/Model/FileShareItem.swift "$verification_dir/Sources/Core/"
+  cp Core/CoreTests/Features/Files/Model/FileShareItemTests.swift "$verification_dir/Tests/CoreTests/"
+  cat > "$verification_dir/Package.swift" <<'EOF'
+// swift-tools-version: 5.9
+import PackageDescription
+let package = Package(
+    name: "CanvasFileShareVerification",
+    targets: [
+        .target(name: "Core"),
+        .testTarget(name: "CoreTests", dependencies: ["Core"])
+    ]
+)
+EOF
+  swift test --package-path "$verification_dir"
+)
+```
+
 ## Test the share sheet on your device
 
 1. Install Notability and sign into Canvas in the custom Student build.
@@ -98,10 +128,15 @@ and the exact names: that would indicate additional receiving-app handling.
 
 ## Validation performed for this change
 
-The change was developed on Linux. Xcode, the iOS SDK, XcodeGen, and SwiftLint
-are not installed there. All four changed Swift files passed a Tree-sitter Swift
-syntax parse, and `git diff --check` passed. These are static checks, not a Swift
-compiler or XCTest run. `make sync` was attempted and stopped because
-`xcodegen` was unavailable. The iOS build, XCTest suite, and physical-device
+The unchanged `FileShareItem.swift` and `FileShareItemTests.swift` files compiled
+in a temporary standalone Swift package with Swift 6.1.3 on Linux. All 12 XCTest
+tests passed with zero failures. All four changed Swift files also passed a
+Tree-sitter Swift syntax parse; `git diff --check` and the repository's copyright
+check passed.
+
+Xcode, the iOS SDK, XcodeGen, and SwiftLint are not installed on the development
+machine. `make sync` was attempted and stopped because `xcodegen` was unavailable.
+The full iOS build, `FileDetailsViewControllerTests`, and physical-device
 share-sheet checks still need to run on a Mac/device before treating this as
-verified for release.
+verified for release. The standalone tests do not establish compatibility with
+Notability's share extension or verify PDF annotation integration.
