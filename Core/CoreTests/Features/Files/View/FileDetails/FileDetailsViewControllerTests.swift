@@ -299,9 +299,21 @@ class FileDetailsViewControllerTests: CoreTestCase {
     }
 
     func testShare() {
+        mock(file)
         controller.view.layoutIfNeeded()
         _ = controller.shareButton.target?.perform(controller.shareButton.action, with: controller.shareButton)
         XCTAssert(router.presented is UIActivityViewController)
+    }
+
+    func test_share_whenSourceCannotBeCopied_shouldPresentError() throws {
+        mock(file)
+        controller.view.layoutIfNeeded()
+        let sourceURL = try XCTUnwrap(controller.localURL)
+        try FileManager.default.removeItem(at: sourceURL)
+
+        controller.share(controller.shareButton)
+
+        XCTAssertEqual(router.presented is UIAlertController, true)
     }
 
     func test_shareButtonHidden_whenRestricted() {
@@ -325,6 +337,7 @@ class FileDetailsViewControllerTests: CoreTestCase {
     }
 
     func testTeacher() {
+        mock(file)
         environment.app = .teacher
         controller.canEdit = true
         controller.view.layoutIfNeeded()

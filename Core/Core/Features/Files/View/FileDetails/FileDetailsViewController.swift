@@ -373,9 +373,17 @@ public class FileDetailsViewController: ScreenViewTrackableViewController, CoreW
         guard let url = localURL else { return }
         let pdf = children.first { $0 is PDFViewController } as? PDFViewController
         try? pdf?.document?.save()
-        let controller = CoreActivityViewController(activityItems: [url], applicationActivities: nil)
-        controller.popoverPresentationController?.barButtonItem = sender
-        env.router.show(controller, from: self, options: .modal())
+        do {
+            let shareItem = try FileShareItem(sourceURL: url, displayName: files.first?.displayName)
+            let controller = CoreActivityViewController(activityItems: [shareItem.url], applicationActivities: nil)
+            controller.completionWithItemsHandler = { _, _, _, _ in
+                shareItem.removeTemporaryFiles()
+            }
+            controller.popoverPresentationController?.barButtonItem = sender
+            env.router.show(controller, from: self, options: .modal())
+        } catch {
+            showError(error)
+        }
     }
 
     @IBAction func copyLink() {
